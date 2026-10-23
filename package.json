@@ -10,7 +10,6 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "create-agent": "node tools/create-agent.js",
     "test": "node tools/test_flow.js"
   },
   "dependencies": {

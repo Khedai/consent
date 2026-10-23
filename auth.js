@@ -145,15 +145,6 @@ export function requireAuth() {
   };
 }
 
-export function requireAdmin() {
-  return (req, res, next) => {
-    if (!req.agent || req.agent.role !== 'admin') {
-      return res.status(403).json({ error: 'Only an administrator can do that.' });
-    }
-    next();
-  };
-}
-
 // State-changing requests must come from this site. SameSite=Strict already
 // stops another site's form from carrying the session cookie; this also rejects
 // a forged Origin, and the per-session CSRF token stops a same-site script from

@@ -10,12 +10,12 @@ import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
-import { DB_URL, USING_REMOTE_DB, all, get, run, write, isUniqueViolation } from './db.js';
+import { DB_URL, USING_REMOTE_DB, all, get, run, write } from './db.js';
 import { prepareDatabase } from './schema.js';
 import {
   SESSION_HOURS, now, sha256, randomToken, hashPassword, verifyPassword,
   passwordProblem, setSessionCookie, clearSessionCookie, createSession, sessionFor,
-  revokeSession, requireAuth, requireAdmin, requireSameOrigin, requireCsrf,
+  revokeSession, requireAuth, requireSameOrigin, requireCsrf,
 } from './auth.js';
 import { buildConsentPdf, buildConsentBundle, verificationCode, CONSENT_TEXT, COMPANY } from './pdf.js';
 
@@ -25,9 +25,7 @@ const BASE = (process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || 
 const ON_RENDER = !!(process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RENDER_EXTERNAL_URL);
 const TRUST_PROXY_HOPS = Math.max(0, Number(process.env.TRUST_PROXY_HOPS ?? (ON_RENDER ? 1 : 0)));
 const TOKEN_EXPIRY_DAYS = Math.min(30, Math.max(1, Number(process.env.TOKEN_EXPIRY_DAYS || 7)));
-// Verifying a password for an unknown/deactivated email must cost the same as a
-// real account, otherwise response timing reveals which agent emails exist.
-const DUMMY_PASSWORD_HASH = await hashPassword(randomToken(32));
+const SHARED_PASSWORD_HASH = await hashPassword(process.env.ADMIN_PASSWORD || randomToken(32));
 
 if (/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(BASE)) {
   console.warn(`WARNING: no public URL is configured. Consent links will point at ${BASE} and only work on this machine.`);
@@ -39,7 +37,7 @@ async function seedAdmin() {
   const agents = await get('SELECT COUNT(*) AS n FROM agents');
   if (!agents.n) {
     if (!email || !password) {
-      console.warn('WARNING: no agent accounts exist. Set ADMIN_EMAIL and ADMIN_PASSWORD, or run: npm run create-agent -- name@example.com "a-long-password" "Full Name" admin');
+      console.warn('WARNING: no shared team login is configured. Set ADMIN_EMAIL and ADMIN_PASSWORD to initialize the service.');
       return;
     }
     const problem = passwordProblem(password);
@@ -104,9 +102,7 @@ function audit(consentId, agentId, event, req, meta = {}) {
 }
 
 // ── Brute-force limiter ──────────────────────────────────────────────────────
-// A login is the one unauthenticated write. The counter is per address and
-// email, in this process only: a restart forgets it, which is the honest limit
-// of a limiter with no shared store.
+// The counter is per address in this process; a restart forgets it.
 const LOGIN_LIMIT = Math.max(3, Number(process.env.LOGIN_LIMIT || 8));
 const LOGIN_WINDOW_MS = Math.max(60000, Number(process.env.LOGIN_WINDOW_MS || 15 * 60 * 1000));
 const loginHits = new Map();
@@ -116,7 +112,7 @@ setInterval(() => {
 }, LOGIN_WINDOW_MS).unref();
 
 function loginKey(req) {
-  return String(req.ip || 'unknown') + '|' + String((req.body && req.body.email) || '').toLowerCase();
+  return String(req.ip || 'unknown');
 }
 
 function loginRate(req, res, next) {
@@ -169,18 +165,14 @@ app.get('/health', wrap(async (req, res) => {
 
 // ── Authentication ──────────────────────────────────────────────────────────
 app.post('/api/auth/login', loginRate, wrap(async (req, res) => {
-  const email = text(req.body && req.body.email, 200).toLowerCase();
   const password = String((req.body && req.body.password) || '');
-  if (!email || !password) return res.status(400).json({ error: 'Enter your email address and password.' });
-  const agent = await get('SELECT * FROM agents WHERE email = ?', [email]);
-  // One message for "no such account" and "wrong password": the login page must
-  // not be an oracle for which agents exist. Unknown emails still pay the scrypt
-  // cost so timing does not reveal the difference.
-  const passwordOk = await verifyPassword(password, agent ? agent.password_hash : DUMMY_PASSWORD_HASH);
-  const ok = !!agent && !!agent.active && passwordOk;
+  if (!password) return res.status(400).json({ error: 'Enter the shared password.' });
+  const agent = await get("SELECT * FROM agents WHERE role = 'admin' AND active = 1 ORDER BY created_at LIMIT 1");
+  const passwordOk = await verifyPassword(password, SHARED_PASSWORD_HASH);
+  const ok = !!agent && passwordOk;
   if (!ok) {
     await audit(null, agent ? agent.id : null, 'login_failed', req, {});
-    return res.status(401).json({ error: 'Email or password is incorrect.' });
+    return res.status(401).json({ error: 'Password is incorrect.' });
   }
   loginHits.delete(loginKey(req));
   const session = await createSession(agent.id, req);
@@ -211,46 +203,6 @@ app.get('/api/auth/me', wrap(async (req, res) => {
     csrfToken: session.csrf_token,
     sessionHours: SESSION_HOURS,
   });
-}));
-
-// ── Agent administration ────────────────────────────────────────────────────
-app.get('/api/agents', requireAuth(), requireAdmin(), wrap(async (req, res) => {
-  const rows = await all('SELECT id,email,name,role,active,created_at FROM agents ORDER BY created_at');
-  res.json({ ok: true, agents: rows });
-}));
-
-app.post('/api/agents', requireAuth(), requireAdmin(), requireCsrf(), wrap(async (req, res) => {
-  const email = text(req.body && req.body.email, 200).toLowerCase();
-  const name = text(req.body && req.body.name, 120);
-  const password = String((req.body && req.body.password) || '');
-  const role = (req.body && req.body.role) === 'admin' ? 'admin' : 'agent';
-  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
-  if (!name) return res.status(400).json({ error: 'Enter the agent name.' });
-  const problem = passwordProblem(password);
-  if (problem) return res.status(400).json({ error: problem });
-  try {
-    const id = crypto.randomUUID();
-    await run('INSERT INTO agents(id,email,name,role,password_hash,active,created_at) VALUES(?,?,?,?,?,?,?)',
-      [id, email, name, role, await hashPassword(password), 1, now()]);
-    await audit(null, req.agent.id, 'agent_created', req, { agentId: id, role });
-    const row = await get('SELECT id,email,name,role,active,created_at FROM agents WHERE id = ?', [id]);
-    res.status(201).json({ ok: true, agent: row });
-  } catch (e) {
-    if (isUniqueViolation(e)) return res.status(409).json({ error: 'An account with that email already exists.' });
-    throw e;
-  }
-}));
-
-app.patch('/api/agents/:id', requireAuth(), requireAdmin(), requireCsrf(), wrap(async (req, res) => {
-  const id = String(req.params.id || '');
-  if (id === req.agent.id) return res.status(400).json({ error: 'You cannot deactivate your own account.' });
-  const row = await get('SELECT id FROM agents WHERE id = ?', [id]);
-  if (!row) return res.status(404).json({ error: 'Agent not found.' });
-  const active = req.body && req.body.active ? 1 : 0;
-  await run('UPDATE agents SET active = ? WHERE id = ?', [active, id]);
-  if (!active) await run('UPDATE sessions SET revoked_at = ? WHERE agent_id = ? AND revoked_at IS NULL', [now(), id]);
-  await audit(null, req.agent.id, 'agent_updated', req, { agentId: id, active });
-  res.json({ ok: true });
 }));
 
 // ── Consent requests (agent side; authenticated) ────────────────────────────

@@ -21,12 +21,10 @@ services:
         sync: false
       - key: TURSO_AUTH_TOKEN
         sync: false
-      # The first administrator. Render prompts for the password rather than
-      # storing it in this repository. It is only used while the agents table is
-      # empty; later accounts are created from the Team panel or with
-      # npm run create-agent.
+      # Internal attribution for the shared-password team session.
       - key: ADMIN_EMAIL
         value: khuselamanagement@gmail.com
+      # The shared team password. Everyone with it can access all records.
       - key: ADMIN_PASSWORD
         sync: false
       - key: ADMIN_NAME

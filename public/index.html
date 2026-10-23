@@ -24,17 +24,15 @@
     <section class="auth-card" aria-labelledby="loginTitle">
       <div class="brand-mark" aria-hidden="true">K</div>
       <h1 id="loginTitle">Khusela Consent</h1>
-      <p class="muted">Agent sign in</p>
+      <p class="muted">Shared team access</p>
       <form id="loginForm" novalidate>
-        <label for="loginEmail">Email address</label>
-        <input id="loginEmail" name="email" type="email" autocomplete="username" required autofocus>
-        <label for="loginPassword">Password</label>
+        <label for="loginPassword">Team password</label>
         <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
-        <button type="submit" class="btn primary" id="loginBtn">Sign in securely</button>
+        <button type="submit" class="btn primary" id="loginBtn">Continue</button>
         <p class="form-error" id="loginError" role="alert" hidden></p>
       </form>
       <p class="secure-note">
-        Client information is available to signed-in agents only. Sessions expire automatically.
+        Everyone with the shared password can access all client records. Sessions expire automatically.
         Never share your password or leave this desk signed in on a shared device.
       </p>
     </section>
@@ -52,10 +50,10 @@
       </div>
       <div class="who">
         <div>
-          <strong id="agentName">—</strong>
-          <span id="agentEmail">—</span>
+          <strong>Khusela Team</strong>
+          <span>Shared password access</span>
         </div>
-        <span class="pill" id="agentRole">Agent</span>
+        <span class="pill" id="agentRole">Team</span>
         <button type="button" class="btn ghost" id="btnLogout">Sign out</button>
       </div>
     </header>
@@ -184,35 +182,6 @@
         Every signed consent is archived on the server with its signature image, date, signing IP and a
         verification code. Downloaded PDFs are the archived originals, not re-rendered copies.
       </p>
-    </section>
-
-    <!-- Admin: team -->
-    <section class="panel team" id="teamPanel" hidden aria-labelledby="teamTitle">
-      <div class="panel-head">
-        <div>
-          <h2 id="teamTitle">Agent accounts</h2>
-          <p class="muted small">Only administrators can see this panel.</p>
-        </div>
-      </div>
-      <form id="agentForm" class="inline-form" novalidate>
-        <input id="newAgentName" type="text" maxlength="120" placeholder="Full name" required aria-label="New agent name">
-        <input id="newAgentEmail" type="email" maxlength="200" placeholder="Email address" required aria-label="New agent email">
-        <input id="newAgentPassword" type="password" maxlength="200" placeholder="Temporary password (10+ chars, letters and numbers)" required aria-label="New agent password">
-        <select id="newAgentRole" aria-label="New agent role">
-          <option value="agent">Agent</option>
-          <option value="admin">Administrator</option>
-        </select>
-        <button type="submit" class="btn primary" id="btnAddAgent">Add agent</button>
-      </form>
-      <p class="form-error" id="agentError" role="alert" hidden></p>
-      <div class="table-wrap">
-        <table class="records-table">
-          <thead>
-            <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th class="actions-col">Action</th></tr>
-          </thead>
-          <tbody id="agentsBody"></tbody>
-        </table>
-      </div>
     </section>
 
     <footer class="footer">

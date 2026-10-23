@@ -111,11 +111,9 @@
   // ── Views ───────────────────────────────────────────────────────────────
   function clearDesk() {
     $('consentForm').reset();
-    $('agentForm').reset();
     $('searchRecords').value = '';
     $('filterRecords').value = 'all';
     $('recordsBody').textContent = '';
-    $('agentsBody').textContent = '';
     $('recordsCount').textContent = '0 consent requests';
     $('recordsEmpty').hidden = false;
     $('linkPanel').hidden = true;
@@ -124,7 +122,6 @@
     $('sessionNote').textContent = '';
     $('btnExportAll').disabled = true;
     setError('requestError', '');
-    setError('agentError', '');
     renderPreview();
   }
 
@@ -142,7 +139,7 @@
     $('loginView').hidden = false;
     $('loginPassword').value = '';
     setError('loginError', message || '');
-    setTimeout(() => { try { $('loginEmail').focus(); } catch (e) {} }, 0);
+    setTimeout(() => { try { $('loginPassword').focus(); } catch (e) {} }, 0);
   }
 
   function showApp() {
@@ -150,10 +147,7 @@
     $('bootView').hidden = true;
     $('loginView').hidden = true;
     $('appView').hidden = false;
-    $('agentName').textContent = agent.name || 'Agent';
-    $('agentEmail').textContent = agent.email || '';
-    $('agentRole').textContent = agent.role === 'admin' ? 'Administrator' : 'Agent';
-    $('teamPanel').hidden = agent.role !== 'admin';
+    $('agentRole').textContent = 'Team';
     startPolling();
   }
 
@@ -168,7 +162,6 @@
       $('sessionNote').textContent = 'Session valid for up to ' + (data.sessionHours || 12) + ' hours';
       showApp();
       await loadConsents({ initial: true });
-      if (agent.role === 'admin') await loadAgents();
     } catch (e) {
       showLogin('Could not reach the consent service. Check the connection and try again.');
     }
@@ -176,22 +169,20 @@
 
   async function login(event) {
     event.preventDefault();
-    const email = $('loginEmail').value.trim();
     const password = $('loginPassword').value;
-    if (!email || !password) { setError('loginError', 'Enter your email address and password.'); return; }
+    if (!password) { setError('loginError', 'Enter the team password.'); return; }
     const btn = $('loginBtn');
     setError('loginError', '');
     setBusy(btn, true, 'Signing in…');
     try {
-      const data = await api('/api/auth/login', { method: 'POST', body: { email, password }, allow401: true });
+      const data = await api('/api/auth/login', { method: 'POST', body: { password }, allow401: true });
       agent = data.agent;
       csrf = data.csrfToken;
       $('sessionNote').textContent = 'Session valid for up to ' + (data.sessionHours || 12) + ' hours';
       $('loginPassword').value = '';
       showApp();
       await loadConsents({ initial: true });
-      if (agent.role === 'admin') await loadAgents();
-      toast('Signed in as ' + agent.name, 'ok');
+      toast('Signed in to the team desk.', 'ok');
     } catch (e) {
       setError('loginError', e.message || 'Could not sign in.');
     } finally {
@@ -594,83 +585,6 @@
     }
   }
 
-  // ── Admin: agent accounts ───────────────────────────────────────────────
-  async function loadAgents() {
-    if (!agent || agent.role !== 'admin') return;
-    try {
-      const data = await api('/api/agents');
-      renderAgents(data.agents || []);
-    } catch (e) {
-      toast(e.message || 'Could not load agent accounts.', 'err');
-    }
-  }
-
-  function renderAgents(rows) {
-    const body = $('agentsBody');
-    body.textContent = '';
-    rows.forEach((row) => {
-      const tr = document.createElement('tr');
-      const name = document.createElement('td');
-      name.textContent = row.name;
-      const email = document.createElement('td');
-      email.textContent = row.email;
-      const role = document.createElement('td');
-      role.textContent = row.role === 'admin' ? 'Administrator' : 'Agent';
-      const status = document.createElement('td');
-      const pill = document.createElement('span');
-      pill.className = 'pill ' + (row.active ? 'ok' : 'bad');
-      pill.textContent = row.active ? 'Active' : 'Disabled';
-      status.appendChild(pill);
-      const actions = document.createElement('td');
-      actions.className = 'actions';
-      const toggle = document.createElement('button');
-      toggle.type = 'button';
-      toggle.className = 'row-btn' + (row.active ? ' danger' : '');
-      toggle.textContent = row.active ? 'Disable' : 'Enable';
-      toggle.disabled = row.id === agent.id;
-      toggle.addEventListener('click', () => toggleAgent(row));
-      actions.appendChild(toggle);
-      tr.append(name, email, role, status, actions);
-      body.appendChild(tr);
-    });
-  }
-
-  async function addAgent(event) {
-    event.preventDefault();
-    setError('agentError', '');
-    const body = {
-      name: $('newAgentName').value.trim(),
-      email: $('newAgentEmail').value.trim(),
-      password: $('newAgentPassword').value,
-      role: $('newAgentRole').value,
-    };
-    if (!body.name || !body.email || !body.password) {
-      return setError('agentError', 'Enter a name, email address and temporary password.');
-    }
-    const btn = $('btnAddAgent');
-    setBusy(btn, true, 'Adding…');
-    try {
-      await api('/api/agents', { method: 'POST', body });
-      $('agentForm').reset();
-      await loadAgents();
-      toast('Agent account created.', 'ok');
-    } catch (e) {
-      setError('agentError', e.message || 'Could not create the account.');
-    } finally {
-      setBusy(btn, false);
-    }
-  }
-
-  async function toggleAgent(row) {
-    try {
-      await api('/api/agents/' + encodeURIComponent(row.id), { method: 'PATCH', body: { active: !row.active } });
-      await loadAgents();
-      toast(row.active ? 'Account disabled.' : 'Account enabled.', 'ok');
-    } catch (e) {
-      toast(e.message || 'Could not update the account.', 'err');
-    }
-  }
-
   // ── Polling / lifecycle ─────────────────────────────────────────────────
   function startPolling() {
     stopPolling();
@@ -697,7 +611,6 @@
     $('btnRefresh').addEventListener('click', () => loadConsents({}));
     $('searchRecords').addEventListener('input', renderRecords);
     $('filterRecords').addEventListener('change', renderRecords);
-    $('agentForm').addEventListener('submit', addAgent);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && agent) loadConsents({ silent: true });
     });

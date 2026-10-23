@@ -1,12 +1,12 @@
 // End-to-end consent flow test.
 //
 // Starts a real server on a random port with a throwaway SQLite database, then:
-//   • the agent login is required and rate limited;
+//   • the shared-password login is required and rate limited;
 //   • every authenticated write needs the session cookie AND the CSRF token;
 //   • an invite link opens the consent statement, can be signed once, and cannot
 //     be replayed;
 //   • the captured signature and the archived PDF are downloadable by the owner
-//     only — another agent gets a 404;
+//     through the shared team session;
 //   • the backup export is a real PDF.
 //
 // Run: npm test
@@ -125,8 +125,8 @@ async function request(pathname, options = {}) {
   return { res, data };
 }
 
-async function login(email, password) {
-  const out = await request('/api/auth/login', { method: 'POST', body: { email, password } });
+async function login(password) {
+  const out = await request('/api/auth/login', { method: 'POST', body: { password } });
   return { ...out, cookie: cookieFrom(out.res) };
 }
 
@@ -141,16 +141,16 @@ async function main() {
   assert.strictEqual(unauth.res.status, 401);
   pass('consent records are unavailable without a session');
 
-  const bad = await login(ADMIN.email, 'wrong-password');
+  const bad = await login('wrong-password');
   assert.strictEqual(bad.res.status, 401);
   assert.ok(!bad.cookie);
   pass('a wrong password is rejected without issuing a session');
 
-  const signedIn = await login(ADMIN.email, ADMIN.password);
+  const signedIn = await login(ADMIN.password);
   assert.strictEqual(signedIn.res.status, 200);
   assert.ok(signedIn.cookie);
   assert.ok(signedIn.data.csrfToken);
-  pass('administrator signs in and receives a session cookie plus CSRF token');
+  pass('the shared password signs in without an email and receives a session plus CSRF token');
 
   const me = await request('/api/auth/me', { cookie: signedIn.cookie });
   assert.strictEqual(me.data.agent.role, 'admin');
@@ -246,26 +246,13 @@ async function main() {
   assert.ok(bundle.data.subarray(0, 4).toString() === '%PDF');
   pass('the backup of all signed consents is a PDF');
 
-  const createdAgent = await request('/api/agents', {
-    method: 'POST', cookie: signedIn.cookie, csrf: signedIn.data.csrfToken,
-    body: { name: 'Second Agent', email: 'agent@test.local', password: 'AgentPass1234', role: 'agent' },
-  });
-  assert.strictEqual(createdAgent.res.status, 201);
-  pass('an administrator can create a separate agent account');
+  const allRecords = await request('/api/consents', { cookie: signedIn.cookie });
+  assert.strictEqual(allRecords.data.consents.length, 1);
+  pass('the shared team session can access all consent records');
 
-  const agentLogin = await login('agent@test.local', 'AgentPass1234');
-  assert.strictEqual(agentLogin.res.status, 200);
-  const agentList = await request('/api/consents', { cookie: agentLogin.cookie });
-  assert.strictEqual(agentList.data.consents.length, 0);
-  pass('an agent sees only their own consent records');
-
-  const foreignPdf = await request('/api/consents/' + consentId + '/pdf', { cookie: agentLogin.cookie });
-  assert.strictEqual(foreignPdf.res.status, 404);
-  pass("another agent cannot download a client's signed PDF");
-
-  const adminOnly = await request('/api/agents', { cookie: agentLogin.cookie });
-  assert.strictEqual(adminOnly.res.status, 403);
-  pass('agent accounts cannot manage the team');
+  const agentAccounts = await request('/api/agents', { cookie: signedIn.cookie });
+  assert.strictEqual(agentAccounts.res.status, 404);
+  pass('individual agent account management is removed');
 
   const coreSrc = fs.readFileSync(path.join(ROOT, 'public/js/core.js'), 'utf8');
   const sandbox = { module: { exports: {} } };
