@@ -1,0 +1,49 @@
+# Render Blueprint for the Khusela Consent service.
+#
+# The service serves both the agent PWA and the API. Keeping them on one origin
+# means the session cookie can be HttpOnly + SameSite=Strict with no CORS rules.
+#
+# Before the first deploy create a Turso database and enter its URL and token in
+# the Render dashboard (both are sync:false below). The free Render disk is
+# ephemeral; Turso is where the consent records, signatures and archived PDFs
+# actually live.
+services:
+  - type: web
+    name: khusela-consent
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      # The first administrator. Render prompts for the password rather than
+      # storing it in this repository. It is only used while the agents table is
+      # empty; later accounts are created from the Team panel or with
+      # npm run create-agent.
+      - key: ADMIN_EMAIL
+        value: khuselamanagement@gmail.com
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: Khusela Administrator
+      - key: SESSION_HOURS
+        value: "12"
+      - key: TOKEN_EXPIRY_DAYS
+        value: "7"
+      - key: LOGIN_LIMIT
+        value: "8"
+      - key: LOGIN_WINDOW_MS
+        value: "900000"
+      # Render appends the real client address to X-Forwarded-For but does not
+      # strip values already supplied by the client. Trust one hop (the Render
+      # proxy) so req.ip is the address Render appended, not a spoofed left-most
+      # value.
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      # Never set PUBLIC_BASE_URL when Render publishes the service URL:
+      # RENDER_EXTERNAL_URL is used automatically and keeps the links correct.

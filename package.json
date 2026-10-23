@@ -1,0 +1,23 @@
+{
+  "name": "khusela-consent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Khusela Debt Management consent capture and signed consent archive",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "create-agent": "node tools/create-agent.js",
+    "test": "node tools/test_flow.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "pdfkit": "^0.15.2"
+  }
+}

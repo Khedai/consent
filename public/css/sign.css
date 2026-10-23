@@ -1,0 +1,156 @@
+:root {
+  --navy: #102a5c;
+  --navy-2: #173d7a;
+  --green: #166534;
+  --ink: #142033;
+  --muted: #5b687c;
+  --line: #dbe3ee;
+  --paper: #fff;
+  --wash: #f2f6fb;
+  --red: #b91c1c;
+  --red-wash: #fee2e2;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 450px at 0% 0%, #e6eefb 0%, transparent 60%),
+    radial-gradient(800px 400px at 100% 0%, #e8f5ee 0%, transparent 55%),
+    var(--wash);
+  display: grid;
+  place-items: center;
+  padding: 20px 14px 30px;
+  -webkit-font-smoothing: antialiased;
+}
+.sign-wrap { width: min(760px, 100%); }
+.sign-brand { display: flex; align-items: center; gap: 12px; margin: 0 4px 14px; }
+.sign-brand strong { display: block; color: var(--navy); }
+.sign-brand span { display: block; color: var(--muted); font-size: .78rem; }
+.brand-mark {
+  width: 44px; height: 44px;
+  border-radius: 13px;
+  display: grid; place-items: center;
+  background: linear-gradient(145deg, var(--navy), var(--navy-2));
+  color: #fff; font-weight: 800; font-size: 1.25rem;
+  box-shadow: 0 8px 20px rgba(16, 42, 92, .25);
+}
+.sign-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 20px 55px rgba(16, 42, 92, .12);
+  padding: clamp(20px, 4vw, 34px);
+}
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--green);
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+h1 { margin: 0 0 6px; color: var(--navy); font-size: clamp(1.35rem, 3vw, 1.7rem); letter-spacing: -.01em; }
+.loading { text-align: center; color: var(--muted); padding: 36px 0; }
+.spinner {
+  width: 34px; height: 34px; margin: 0 auto 12px;
+  border: 3px solid #c7d5ea;
+  border-top-color: var(--navy);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.muted { color: var(--muted); line-height: 1.55; }
+.error-text {
+  background: var(--red-wash);
+  color: var(--red);
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 11px 13px;
+}
+.consent-box {
+  margin: 16px 0 6px;
+  background: var(--wash);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 16px;
+}
+.consent-box p { margin: 0; line-height: 1.65; font-size: 1rem; }
+.signature-label { margin: 16px 0 8px; font-weight: 700; color: var(--navy); }
+.pad-wrap {
+  position: relative;
+  border: 2px dashed #b9c8dd;
+  border-radius: 13px;
+  background: #fff;
+  overflow: hidden;
+}
+#signaturePad {
+  display: block;
+  width: 100%;
+  height: 230px;
+  touch-action: none;
+  cursor: crosshair;
+}
+.pad-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #9aa8bd;
+  font-size: .92rem;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+.pad-wrap.drawn .pad-hint { opacity: 0; }
+.sign-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 11px;
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.primary {
+  background: linear-gradient(145deg, var(--navy), var(--navy-2));
+  border-color: var(--navy);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(16, 42, 92, .2);
+  flex: 1;
+}
+.btn.ghost { background: transparent; }
+.status { min-height: 1.3em; margin: 14px 0 0; font-weight: 600; color: var(--muted); }
+.status.ok { color: var(--green); }
+.status.err { color: var(--red); }
+.fineprint {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.5;
+}
+#doneBox { text-align: center; padding: 10px 0; }
+.tick {
+  width: 64px; height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: #dcfce7;
+  color: var(--green);
+  font-size: 2rem;
+  font-weight: 800;
+}
+.reference { color: var(--muted); font-size: .82rem; }
+.sign-footer { text-align: center; color: var(--muted); font-size: .74rem; margin: 16px 0 0; }
+@media (max-width: 520px) {
+  #signaturePad { height: 200px; }
+  .sign-actions .btn { width: 100%; }
+}

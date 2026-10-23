@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102a5c">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Khusela Debt Management consent capture — send a secure one-time consent link, receive the signature and keep a signed PDF on record.">
+  <title>Khusela Consent</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="booting">
+
+  <div class="boot" id="bootView">
+    <div class="spinner" aria-hidden="true"></div>
+    <p>Opening the secure consent desk…</p>
+  </div>
+
+  <!-- ── Login ───────────────────────────────────────────────────────────── -->
+  <div class="auth-wrap" id="loginView" hidden>
+    <section class="auth-card" aria-labelledby="loginTitle">
+      <div class="brand-mark" aria-hidden="true">K</div>
+      <h1 id="loginTitle">Khusela Consent</h1>
+      <p class="muted">Agent sign in</p>
+      <form id="loginForm" novalidate>
+        <label for="loginEmail">Email address</label>
+        <input id="loginEmail" name="email" type="email" autocomplete="username" required autofocus>
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+        <button type="submit" class="btn primary" id="loginBtn">Sign in securely</button>
+        <p class="form-error" id="loginError" role="alert" hidden></p>
+      </form>
+      <p class="secure-note">
+        Client information is available to signed-in agents only. Sessions expire automatically.
+        Never share your password or leave this desk signed in on a shared device.
+      </p>
+    </section>
+  </div>
+
+  <!-- ── Agent desk ──────────────────────────────────────────────────────── -->
+  <div id="appView" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark small" aria-hidden="true">K</div>
+        <div>
+          <strong>Khusela Consent</strong>
+          <span>Client credit-information consent</span>
+        </div>
+      </div>
+      <div class="who">
+        <div>
+          <strong id="agentName">—</strong>
+          <span id="agentEmail">—</span>
+        </div>
+        <span class="pill" id="agentRole">Agent</span>
+        <button type="button" class="btn ghost" id="btnLogout">Sign out</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- New request -->
+      <section class="panel" aria-labelledby="requestTitle">
+        <div class="panel-head">
+          <h2 id="requestTitle">New consent request</h2>
+          <span class="pill soft">Step 1</span>
+        </div>
+        <form id="consentForm" novalidate>
+          <div class="grid two">
+            <div>
+              <label for="clientName">Client full name</label>
+              <input id="clientName" name="clientName" type="text" maxlength="120" autocomplete="off" required>
+            </div>
+            <div>
+              <label for="idNumber">ID number</label>
+              <input id="idNumber" name="idNumber" type="text" maxlength="30" inputmode="numeric" autocomplete="off" required>
+            </div>
+            <div>
+              <label for="phone">WhatsApp number</label>
+              <input id="phone" name="phone" type="tel" maxlength="30" autocomplete="off" placeholder="082 000 0000">
+            </div>
+            <div>
+              <label for="email">Email address</label>
+              <input id="email" name="email" type="email" maxlength="200" autocomplete="off" placeholder="client@example.com">
+            </div>
+            <div class="span-two">
+              <label for="reference">Reference <span class="optional">(optional)</span></label>
+              <input id="reference" name="reference" type="text" maxlength="80" autocomplete="off" placeholder="Application or file reference">
+            </div>
+          </div>
+          <p class="hint">Enter a WhatsApp number or an email address — at least one is needed to send the link.</p>
+          <button type="submit" class="btn primary" id="btnGenerate">Generate secure consent link</button>
+          <p class="form-error" id="requestError" role="alert" hidden></p>
+        </form>
+
+        <div class="link-box" id="linkPanel" hidden>
+          <label for="consentLink">One-time consent link</label>
+          <div class="link-row">
+            <input id="consentLink" type="text" readonly>
+            <button type="button" class="btn" id="btnCopy">Copy</button>
+          </div>
+          <div class="link-actions">
+            <button type="button" class="btn whatsapp" id="btnWhatsApp">Send via WhatsApp</button>
+            <button type="button" class="btn email" id="btnEmail">Send via Email</button>
+          </div>
+          <p class="status-line" id="requestStatus" role="status"></p>
+        </div>
+      </section>
+
+      <!-- Signed consent / autofilled form -->
+      <section class="panel signed-panel" aria-labelledby="signedTitle" id="signedPanel">
+        <div class="panel-head">
+          <h2 id="signedTitle">Signed consent form</h2>
+          <span class="pill" id="previewStatus">No request</span>
+        </div>
+
+        <div class="statement">
+          <p id="consentText">I hereby confirm that i give Khusela Debt Management permission to access, obtain, process and use my credit and personal information in accordance to their mandate.</p>
+          <p class="signature-label">Signature:</p>
+        </div>
+
+        <div class="signature-frame" id="signatureFrame">
+          <div class="signature-empty" id="signatureEmpty">
+            The client's signature will appear here automatically once they sign.
+          </div>
+          <img id="signedImage" alt="Client signature" hidden>
+        </div>
+
+        <dl class="autofill" id="autofill">
+          <div><dt>Client</dt><dd id="previewName">—</dd></div>
+          <div><dt>ID number</dt><dd id="previewId">—</dd></div>
+          <div><dt>WhatsApp</dt><dd id="previewPhone">—</dd></div>
+          <div><dt>Email</dt><dd id="previewEmail">—</dd></div>
+          <div><dt>Reference</dt><dd id="previewRef">—</dd></div>
+          <div><dt>Signed at</dt><dd id="previewSignedAt">—</dd></div>
+          <div><dt>Verification</dt><dd id="previewCode">—</dd></div>
+        </dl>
+
+        <div class="preview-actions">
+          <button type="button" class="btn primary" id="btnDownloadActive" disabled>Download signed PDF</button>
+          <button type="button" class="btn" id="btnRenewActive" hidden>New link</button>
+          <span class="hint" id="previewHint">Generate a link, then wait for the client to sign.</span>
+        </div>
+      </section>
+    </main>
+
+    <!-- Records -->
+    <section class="panel records" aria-labelledby="recordsTitle">
+      <div class="panel-head wrap-head">
+        <div>
+          <h2 id="recordsTitle">Consent records</h2>
+          <p class="muted small" id="recordsCount">0 consent requests</p>
+        </div>
+        <div class="record-tools">
+          <input type="search" id="searchRecords" placeholder="Search name, ID, contact" aria-label="Search consent records">
+          <select id="filterRecords" aria-label="Filter consent records">
+            <option value="all">All statuses</option>
+            <option value="signed">Signed only</option>
+            <option value="pending">Pending</option>
+          </select>
+          <button type="button" class="btn" id="btnRefresh">Refresh</button>
+          <button type="button" class="btn primary" id="btnExportAll" disabled>Download all signed (PDF)</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="records-table">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Client</th>
+              <th>Contact</th>
+              <th>Status</th>
+              <th>Signed</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+        <p class="empty" id="recordsEmpty">No consent requests yet. Create the first one above.</p>
+      </div>
+      <p class="secure-note">
+        Every signed consent is archived on the server with its signature image, date, signing IP and a
+        verification code. Downloaded PDFs are the archived originals, not re-rendered copies.
+      </p>
+    </section>
+
+    <!-- Admin: team -->
+    <section class="panel team" id="teamPanel" hidden aria-labelledby="teamTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="teamTitle">Agent accounts</h2>
+          <p class="muted small">Only administrators can see this panel.</p>
+        </div>
+      </div>
+      <form id="agentForm" class="inline-form" novalidate>
+        <input id="newAgentName" type="text" maxlength="120" placeholder="Full name" required aria-label="New agent name">
+        <input id="newAgentEmail" type="email" maxlength="200" placeholder="Email address" required aria-label="New agent email">
+        <input id="newAgentPassword" type="password" maxlength="200" placeholder="Temporary password (10+ chars, letters and numbers)" required aria-label="New agent password">
+        <select id="newAgentRole" aria-label="New agent role">
+          <option value="agent">Agent</option>
+          <option value="admin">Administrator</option>
+        </select>
+        <button type="submit" class="btn primary" id="btnAddAgent">Add agent</button>
+      </form>
+      <p class="form-error" id="agentError" role="alert" hidden></p>
+      <div class="table-wrap">
+        <table class="records-table">
+          <thead>
+            <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th class="actions-col">Action</th></tr>
+          </thead>
+          <tbody id="agentsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>Khusela Debt Management · Consent desk</span>
+      <span>Session ends automatically · <span id="sessionNote"></span></span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="js/core.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

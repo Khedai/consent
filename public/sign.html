@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102a5c">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Khusela Consent — Sign</title>
+  <link rel="icon" href="/icons/icon-192.png" type="image/png">
+  <link rel="stylesheet" href="/css/sign.css">
+</head>
+<body>
+  <main class="sign-wrap">
+    <div class="sign-brand">
+      <div class="brand-mark" aria-hidden="true">K</div>
+      <div>
+        <strong>Khusela Debt Management</strong>
+        <span>Secure consent signing</span>
+      </div>
+    </div>
+
+    <section class="sign-card" aria-labelledby="signTitle">
+      <div class="loading" id="loading">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Checking your secure consent link…</p>
+      </div>
+
+      <div id="errorBox" hidden>
+        <h1 id="signTitle">This link is not available</h1>
+        <p class="error-text" id="errorText"></p>
+        <p class="muted">Please contact your Khusela agent for a new consent link.</p>
+      </div>
+
+      <div id="signForm" hidden>
+        <p class="eyebrow">Consent to process credit and personal information</p>
+        <h1 id="signTitle2">Hello, <span id="clientName">client</span></h1>
+        <p class="muted" id="intro">Please read the consent statement below, then sign once with your finger or mouse.</p>
+
+        <div class="consent-box">
+          <p id="consentText">I hereby confirm that i give Khusela Debt Management permission to access, obtain, process and use my credit and personal information in accordance to their mandate.</p>
+        </div>
+
+        <p class="signature-label">Signature:</p>
+        <div class="pad-wrap">
+          <canvas id="signaturePad" aria-label="Signature pad — draw your signature here"></canvas>
+          <span class="pad-hint" id="padHint">Draw your signature here</span>
+        </div>
+
+        <div class="sign-actions">
+          <button type="button" class="btn ghost" id="btnClear">Clear signature</button>
+          <button type="button" class="btn primary" id="btnSign" disabled>Submit consent</button>
+        </div>
+
+        <p class="status" id="status" role="status"></p>
+
+        <p class="fineprint">
+          By submitting, your signature and the time it was given are recorded securely. This link can
+          be used once and expires on <span id="expiresAt">the date shown when the link was created</span>.
+        </p>
+      </div>
+
+      <div id="doneBox" hidden>
+        <div class="tick" aria-hidden="true">✓</div>
+        <h1>Consent recorded</h1>
+        <p id="doneText">Your consent has been signed and archived securely. You can close this window.</p>
+        <p class="reference" id="doneCode"></p>
+      </div>
+    </section>
+
+    <p class="sign-footer">Khusela Debt Management · Your consent is recorded securely.</p>
+  </main>
+
+  <script src="/js/signing.js"></script>
+</body>
+</html>
