@@ -192,8 +192,13 @@ async function main() {
   const agentPage = await request('/');
   assert.strictEqual(agentPage.res.status, 200);
   assert.ok(agentPage.data.toString().includes('href="manifest.webmanifest"'));
+  assert.ok(agentPage.data.toString().includes('/images/khusela-logo.png'));
+  const logo = await request('/images/khusela-logo.png');
+  assert.strictEqual(logo.res.status, 200);
+  assert.ok(String(logo.res.headers.get('content-type')).includes('image/png'));
   const csp = String(agentPage.res.headers.get('content-security-policy') || '');
   assert.ok(csp.includes("default-src 'self'"));
+  assert.ok(csp.includes("img-src 'self' data: blob:"));
   assert.ok(!csp.includes('upgrade-insecure-requests'));
   const manifest = await request('/manifest.webmanifest');
   assert.strictEqual(manifest.res.status, 200);
@@ -232,7 +237,7 @@ async function main() {
   const sig = await request('/api/consents/' + consentId + '/signature', { cookie: signedIn.cookie });
   assert.strictEqual(sig.res.status, 200);
   assert.strictEqual(sig.res.headers.get('content-type'), 'image/png');
-  assert.ok(sig.data.length > 0);
+  assert.ok(sig.data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])));
   pass('the captured signature image is available to the agent');
 
   const pdf = await request('/api/consents/' + consentId + '/pdf', { cookie: signedIn.cookie });

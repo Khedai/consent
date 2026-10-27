@@ -17,6 +17,8 @@
   let toastTimer = null;
   let sigObjectUrl = null;
   let sigForId = null;
+  let sigLoadingForId = null;
+  let sigRequestId = 0;
 
   // ── Small utilities ─────────────────────────────────────────────────────
   function toast(text, kind) {
@@ -238,7 +240,6 @@
     renderPreview();
     renderLinkPanel();
     renderRecords();
-    if (record && record.status === 'signed') loadSignature(record);
   }
 
   function renderRecords() {
@@ -337,9 +338,13 @@
   }
 
   function clearSignature() {
+    sigRequestId++;
+    sigLoadingForId = null;
     sigForId = null;
     if (sigObjectUrl) { URL.revokeObjectURL(sigObjectUrl); sigObjectUrl = null; }
     const img = $('signedImage');
+    img.onload = null;
+    img.onerror = null;
     img.removeAttribute('src');
     img.hidden = true;
     $('signatureEmpty').hidden = false;
@@ -385,13 +390,13 @@
 
     if (record.status === 'signed') {
       $('previewHint').textContent = 'Signed and archived on the server. Download the original PDF above.';
-      if (sigForId !== record.id) {
+      if (sigForId === record.id) {
+        empty.hidden = true;
+        img.hidden = false;
+      } else {
         empty.hidden = false;
         empty.textContent = 'Loading the captured signature…';
         loadSignature(record);
-      } else {
-        empty.hidden = true;
-        img.hidden = false;
       }
     } else {
       clearSignature();
@@ -406,22 +411,44 @@
   }
 
   async function loadSignature(record) {
-    if (!record || record.status !== 'signed') return;
+    if (!record || record.status !== 'signed' || sigForId === record.id || sigLoadingForId === record.id) return;
+    const requestId = ++sigRequestId;
+    sigLoadingForId = record.id;
+    let objectUrl = null;
     try {
       const blob = await fetchBlob('/api/consents/' + encodeURIComponent(record.id) + '/signature');
-      if (activeId !== record.id) return;
+      if (activeId !== record.id || requestId !== sigRequestId) return;
+      objectUrl = URL.createObjectURL(blob);
+      const preloadedImage = new Image();
+      await new Promise((resolve, reject) => {
+        preloadedImage.onload = resolve;
+        preloadedImage.onerror = () => reject(new Error('The signature image could not be decoded.'));
+        preloadedImage.src = objectUrl;
+      });
+      if (activeId !== record.id || requestId !== sigRequestId) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+        return;
+      }
       if (sigObjectUrl) URL.revokeObjectURL(sigObjectUrl);
-      sigObjectUrl = URL.createObjectURL(blob);
+      sigObjectUrl = objectUrl;
+      objectUrl = null;
       sigForId = record.id;
       const img = $('signedImage');
       img.src = sigObjectUrl;
       img.hidden = false;
       $('signatureEmpty').hidden = true;
     } catch (e) {
-      if (activeId === record.id) {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (activeId === record.id && requestId === sigRequestId) {
+        const img = $('signedImage');
+        img.removeAttribute('src');
+        img.hidden = true;
         $('signatureEmpty').hidden = false;
         $('signatureEmpty').textContent = 'The signature image could not be loaded. The archived PDF is still available.';
       }
+    } finally {
+      if (sigLoadingForId === record.id && requestId === sigRequestId) sigLoadingForId = null;
     }
   }
 

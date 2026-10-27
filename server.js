@@ -70,6 +70,7 @@ app.set('trust proxy', TRUST_PROXY_HOPS);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
+      'img-src': ["'self'", 'data:', 'blob:'],
       // Local development is served over plain HTTP, so do not ask the browser
       // to upgrade its own asset requests to https. Render always gets the
       // directive.

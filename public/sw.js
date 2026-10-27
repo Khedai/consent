@@ -1,12 +1,13 @@
 // Offline shell for the agent desk. Client information is never cached: every
 // /api/ request goes to the network, and the signing pages are always fetched
 // fresh so a one-time token cannot be replayed from a cache.
-const CACHE = 'khusela-consent-v1';
+const CACHE = 'khusela-consent-v3';
 const ASSETS = [
   '/',
   '/index.html',
   '/sign.html',
   '/manifest.webmanifest',
+  '/images/khusela-logo.png',
   '/css/styles.css',
   '/css/sign.css',
   '/js/core.js',
@@ -62,8 +63,11 @@ self.addEventListener('fetch', (event) => {
   const html = event.request.mode === 'navigate'
     || url.pathname.endsWith('.html')
     || url.pathname === '/';
+  const codeAsset = /\.(js|css)$/.test(url.pathname);
 
   event.respondWith(caches.open(CACHE).then((cache) => (html
     ? networkFirst(cache, event.request)
-    : cacheFirst(cache, event.request))));
+    : codeAsset
+      ? networkFirst(cache, event.request)
+      : cacheFirst(cache, event.request))));
 });
